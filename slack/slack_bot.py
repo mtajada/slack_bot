@@ -8,13 +8,13 @@ from flask import Flask, request
 from functions import draft_email
 
 # Load environment variables from .env file
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv())                  #When uploaded to github, it doesnt have access to .env file
 
 # Set Slack API credentials
 SLACK_BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
 SLACK_SIGNING_SECRET = os.environ["SLACK_SIGNING_SECRET"]
 SLACK_BOT_USER_ID = os.environ["SLACK_BOT_USER_ID"]
-
+print(SLACK_BOT_TOKEN)
 # Initialize the Slack app
 app = App(token=SLACK_BOT_TOKEN)
 
@@ -58,6 +58,35 @@ def my_function(text):
 
 
 
+signature_verifier = SignatureVerifier(SLACK_SIGNING_SECRET)
+
+def require_slack_verification(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not verify_slack_request():
+            abort(403)
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def verify_slack_request():
+    # Get the request headers
+    timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
+    signature = request.headers.get("X-Slack-Signature", "")
+
+    # Check if the timestamp is within five minutes of the current time
+    current_timestamp = int(time.time())
+    if abs(current_timestamp - int(timestamp)) > 60 * 5:
+        return False
+
+    # Verify the request signature
+    return signature_verifier.is_valid(
+        body=request.get_data().decode("utf-8"),
+        timestamp=timestamp,
+        signature=signature,
+    )
+
 #Cuando se menciona @asistente se recoge el texto de a continuación que se usará como prompt.
 @app.event("app_mention")
 def handle_mentions(body, say):
@@ -80,22 +109,17 @@ def handle_mentions(body, say):
 
 
 @flask_app.route("/slack/events", methods=["POST"])
+@require_slack_verification
 def slack_events():
-    
-    data = request.json
-   
-    # Check if the request is a challenge request
-    if 'challenge' in data:
-        return jsonify({"challenge": data["challenge"]})
-
-    # Handle other events using the SlackRequestHandler
     return handler.handle(request)
 
 
 
-    """
-    # Run the Flask app
+
+
+# Run the Flask app
 if __name__ == "__main__":
-    flask_app.run()
+    Logging.info("Flask app started")
+    flask_app.run(host="0.0.0.0", port=8000)
     
-    """
+
