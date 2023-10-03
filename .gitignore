@@ -1,0 +1,31 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+
+# Environment files
+*.env
+
+# macOS system files
+.DS_Store
+
+# IDE specific (e.g., PyCharm)
+.idea/
+*.iml
+
+# Jupyter Notebook
+*.ipynb_checkpoints/
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite
+
+# Others
+*.bak
+*.swp
+*.swo
